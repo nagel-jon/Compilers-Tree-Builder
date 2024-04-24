@@ -1,11 +1,11 @@
 %{
-//*****************************************************************************************
+//***************
 // File: tree_builder.l
 // Purpose: To scan through a tree builder file and tokenize tree builder language
 // build instructions
 // flex tree_builder.l
-// g++ -o tree_builder lex.yy.x
-// ./tree_builder < data_file.txt
+// g++ -o tree_builder lex.yy.c
+// ./tree_builder < examples/ex1.tb
 // **************  
 #include <iostream>
 #include <fstream>
@@ -21,6 +21,8 @@ using namespace std;
 #define BASIC 7
 #define TKCHILD 8
 #define TKVAR 9
+#define TKIN 10
+#define TKJUNK 11
 #define TKUNMATCHED 255
 
 %}
@@ -32,10 +34,13 @@ using namespace std;
 "weight"       {return TKWEIGHT;}
 "for"           {return TKFOR;}
 "isachildof"    {return TKCHILD;}
+"in"            {return TKIN;}
 
 \"[^\"\n]*\"    { return TKSTRING; }
 
 [0-9]+      {return TKINT;}
+
+[a-zA-Z_][a-zA-Z0-9_]*      {return TKVAR;}
 
 
 
@@ -46,6 +51,7 @@ using namespace std;
 "="             {return BASIC;}
 ";"             {return BASIC;}
 ":"             {return BASIC;}
+"+"             {return BASIC;}
 
 
 
@@ -80,14 +86,20 @@ int main() {
                 outputFile << "TKFOR ";
                 break; 
             case TKCHILD:
-            outputFile << "TKCHILD ";
-            break;
+                outputFile << "TKCHILD ";
+                break;
             case TKSTRING:
-            outputFile << "TKSTRING ";
-            break;
+                outputFile << "TKSTRING ";
+                break;
             case TKINT:
-            outputFile << "TKINT ";
-            break;
+                outputFile << "TKINT ";
+                break;
+            case TKVAR:
+                outputFile << "TKVAR ";
+                break;
+            case TKIN:
+                outputFile << "TKIN ";
+                break;
 
         }  
         token = yylex();
