@@ -10,7 +10,6 @@ Parser for Tree Builder
 #include <stdlib.h>
 #include <string.h>
 #include "parse_tree.h"
-ParseTree parse_tree;
 
 extern int yylex();
 extern int yyparse();
@@ -26,7 +25,7 @@ extern FILE* yyin;
     int integer;
     class expression* exp;
     class integer_exp *int_ptr;
-    class statement *statement_ptr;
+    class statement *s_ptr;
     class comp_statement *c_ptr;
     struct string_list *string_list;
 
@@ -48,6 +47,8 @@ LBRACE RBRACE
 SEMICOLON 
 COLON 
 
+%left PLUS
+%left EQUAL
 //Typed-Token Definitions
 
 %token <string> IDENTIFIER STRING
@@ -57,7 +58,7 @@ COLON
 
 %type <exp> exp name parent
 %type <c_ptr> prog S
-%type <statement_ptr> statement for_statement node build_statement
+%type <s_ptr> statement for_statement node build_statement
 %type <int_ptr> weight int_expr
 %type <string_list> string_list
 %%
@@ -85,19 +86,18 @@ statement prog {$$ = new comp_statement($1, $2);}
 
 //Statement Rule: statement -> for_statement build_statement
 statement: 
-for_statement {$$ = $1;}
-    | build_statement {$$ = $1;}
-    |for_statement build_statement {$$ = $1;}
+    build_statement {$$ = $1;}
+    |for_statement {$$ = $1;}
     ;
 
 
 //For Statement Rule: for_statement -> FOR IDENTIFIER IN LBRACKET string_list RBRACKET LBRACE prog RBRACE
 for_statement: 
-FOR IDENTIFIER IN LBRACKET string_list RBRACKET LBRACE prog RBRACE {
-    $$ = new for_statement($2, $5, $8);
-}
-| FOR IDENTIFIER IN LBRACKET INT RBRACKET LBRACE prog RBRACE {
+FOR IDENTIFIER IN LBRACKET INT COLON INT RBRACKET LBRACE prog RBRACE {
     $$ = new for_statement($2, $5, $7, $10);
+}
+| FOR IDENTIFIER IN LBRACKET string_list RBRACKET LBRACE prog RBRACE {
+    $$ = new for_statement($2, $5, $8);
 }
 
 ;
@@ -127,12 +127,12 @@ BUILD LBRACE node RBRACE SEMICOLON {
 
 //Node Rule: node -> NAME WEIGHT | NAME WEIGHT PARENT
 node:
-NAME WEIGHT {
+name weight{
     $$ = new build_statement($1, $2);
     //printf("Node: %s %d\n", $1, $2);
 
 }
-| NAME WEIGHT PARENT {
+| name weight parent {
     $$ = new build_statement($1, $2, $3);
     //printf("Node: %s %d %s\n", $1, $2, $3);
 }
