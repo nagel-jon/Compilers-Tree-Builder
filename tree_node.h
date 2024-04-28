@@ -38,6 +38,10 @@ public:
         }
     }
 
+    string getParentName() const {
+        return parent;
+    }
+
 
 };
 

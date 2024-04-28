@@ -9,7 +9,7 @@
 // **************  
 #include <stdio.h>
 #include <stdlib.h>
-//#include "y.tab.h"
+#include "y.tab.h"
 
 #include <iostream>
 #include <fstream>
@@ -73,25 +73,25 @@ using namespace std;
 \"[^\"\n]*\"    {
     //Store the string in yylval
     //Need to remove the quotes and trailing space
-   // yylval.string = strdup(yytext + 1, yyleng - 2);
+   yylval.string = strndup(yytext + 1, yyleng - 2);
     return STRING;
  }
 
 [0-9]+      {
     //Store the integer in yylval
-   // yylval.integer = atoi(yytext);
+   yylval.integer = atoi(yytext);
     return INT;
-    }
-
+    } 
+clear
 
 [a-zA-Z_][a-zA-Z0-9_]*      {
     //Store the identifier in yylval
-   // yylval.string = strdup(yytext);
+   yylval.string = strdup(yytext);
     return IDENTIFIER;
 }
 
 [ \t\n]     { /* ignore whitespace */ }
-.          { printf("Unmatched character: %s\n", yytext);}
+.          {return ERROR;}
 
 
 

@@ -1,40 +1,34 @@
-/*
-tree_builder.y
-Jonathan Nagel
 
-Parser for Tree Builder
-*/
 
 %{
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "parse_tree.h"
+#include "y.tab.h"
 
 extern int yylex();
 extern int yyparse();
 extern FILE* yyin;
+void yyerror(const char* s);
 
 %}
 
-
+%token ERROR
 %start S
 
 %union{
     char* string;
     int integer;
-    class expression* exp;
-    class integer_exp *int_ptr;
-    class statement *s_ptr;
-    class comp_statement *c_ptr;
-    struct string_list *string_list;
-
+    class Expression* exp;
+    class IntegerExpression* int_ptr;
+    class Statement* s_ptr;
+    class CompoundStatement* c_ptr;
+    class StringList* string_list;
 }
 
 //Token Definitions
-%token 
-BUILD
-FOR 
+%token BUILD FOR 
 IN 
 NAME
 WEIGHT
@@ -58,9 +52,9 @@ COLON
 
 %type <exp> exp name parent
 %type <c_ptr> prog S
-%type <s_ptr> statement for_statement node build_statement
+%type <s_ptr> Statement ForStatement node BuildStatement
 %type <int_ptr> weight int_expr
-%type <string_list> string_list
+%type <string_list> StringList
 %%
 
 //Grammar Rules
@@ -73,53 +67,53 @@ prog {
     map<string, string> symbol_table;
     ParseTree tree;
     $$=$1;
-    $$ -> evaluate(my_symbol_table, tree);
+    $$ -> evaluate_statement(symbol_table, tree);
     //print the resulting tree
-    tree.print();
+    tree.printTree();
 }
 
 //Program Rule: prog -> statement prog | statement
 prog: 
-statement prog {$$ = new comp_statement($1, $2);}
+Statement prog {$$ = new CompoundStatement($1, $2);}
     | {$$ = NULL;}
     ;
 
-//Statement Rule: statement -> for_statement build_statement
-statement: 
-    build_statement {$$ = $1;}
-    |for_statement {$$ = $1;}
+//Statement Rule: statement -> ForStatement BuildStatement
+Statement: 
+    BuildStatement {$$ = $1;}
+    |ForStatement {$$ = $1;}
     ;
 
 
-//For Statement Rule: for_statement -> FOR IDENTIFIER IN LBRACKET string_list RBRACKET LBRACE prog RBRACE
-for_statement: 
+//For Statement Rule: ForStatement -> FOR IDENTIFIER IN LBRACKET string_list RBRACKET LBRACE prog RBRACE
+ForStatement: 
 FOR IDENTIFIER IN LBRACKET INT COLON INT RBRACKET LBRACE prog RBRACE {
-    $$ = new for_statement($2, $5, $7, $10);
+    $$ = new ForStatement($2, $5, $7, $10);
 }
-| FOR IDENTIFIER IN LBRACKET string_list RBRACKET LBRACE prog RBRACE {
-    $$ = new for_statement($2, $5, $8);
+| FOR IDENTIFIER IN LBRACKET StringList RBRACKET LBRACE prog RBRACE {
+    $$ = new ForStatement($5->string, 0, 0, $8);
 }
-
+//for some reason the stringlist tpye will not work here
 ;
 
 //String List Rule: string_list -> STRING COMMA string_list | STRING
-string_list: IDENTIFIER
+StringList: IDENTIFIER
 {
-    $$ = new string_list();
+    $$ = new StringList();
     $$->string = $1;
     $$->next = NULL;
 }
-| string_list COMMA IDENTIFIER
+| StringList COMMA IDENTIFIER
 {
-    string_list* temp = new string_list();
+    StringList* temp = new StringList();
     temp->string = $3;
     temp->next = $1;
-    $$ = new_node;
+    $$ = temp;
 }
 ;
 
-//Build Statement Rule: build_statement -> BUILD LBRACE node RBRACE SEMICOLON
-build_statement:
+//Build Statement Rule: BuildStatement -> BUILD LBRACE node RBRACE SEMICOLON
+BuildStatement:
 BUILD LBRACE node RBRACE SEMICOLON {
     $$ = ($3);
 }
@@ -128,33 +122,33 @@ BUILD LBRACE node RBRACE SEMICOLON {
 //Node Rule: node -> NAME WEIGHT | NAME WEIGHT PARENT
 node:
 name weight{
-    $$ = new build_statement($1, $2);
+    $$ = new BuildStatement($1, $2);
     //printf("Node: %s %d\n", $1, $2);
 
 }
 | name weight parent {
-    $$ = new build_statement($1, $2, $3);
+    $$ = new BuildStatement($1, $2, $3);
     //printf("Node: %s %d %s\n", $1, $2, $3);
 }
 ;
 
 //expression Rule: exp -> STRING | IDENTIFIER | exp PLUS exp
 exp:
-STRING {$$ = new string_constant($1);}
-| IDENTIFIER {$$ = new variable($1);}
-| exp PLUS exp {$$ = new concat($1, $3);}
+STRING {$$ = new StringConstant($1);}
+| IDENTIFIER {$$ = new Variable($1);}
+| exp PLUS exp {$$ = new ConcatenationOperator($1, $3);}
 
 
 //Integer Expression Rule: int_expr -> INT | IDENTIFIER | int_expr PLUS int_expr
 int_expr:
-INT {$$ = new int_constant($1);}
-| IDENTIFIER {$$ = new int_variable($1);}
-| int_expr PLUS int_expr {$$ = new int_add($1, $3);};
+INT {$$ = new IntegerConstant($1);}
+| IDENTIFIER {$$ = new IntegerVariable($1);}
+| int_expr PLUS int_expr {$$ = new AdditionOperator($1, $3);};
 
 //Weight Rule: weight -> WEIGHT EQUAL int_expr SEMICOLON
 weight:
 WEIGHT EQUAL int_expr SEMICOLON {
-    $$ = new weight($3);
+    $$ =$3;
 };
 
 //Parent Rule: parent -> PARENT EQUAL exp SEMICOLON
@@ -167,6 +161,7 @@ name:
 NAME EQUAL exp SEMICOLON {
     $$ = $3;
 };
+
 
 
 %%
@@ -183,5 +178,8 @@ int main(int argc, char** argv){
         yyin = stdin;
     }
     yyparse();
+    if(yyin != stdin){
+        fclose(yyin);
+    }
     return 0;
 }
